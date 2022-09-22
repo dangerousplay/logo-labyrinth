@@ -1,0 +1,5 @@
+PyOpengl
+numpy
+esper
+pillow
+PyGLM==2.5.7
