@@ -4,7 +4,7 @@ from typing import Optional
 from OpenGL.GL import glCreateShader, glCompileShader, glShaderSource, GL_COMPILE_STATUS, glGetShaderiv, \
     glGetShaderInfoLog, glCreateProgram, glAttachShader, glLinkProgram, glBindAttribLocation, GL_LINK_STATUS, \
     glGetProgramiv, glActiveTexture, glBindTexture, GL_TEXTURE_2D, glGetUniformLocation, glUniform1i, glUniform4f, \
-    GL_TEXTURE0, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER, glUseProgram
+    GL_TEXTURE0, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER, glUseProgram, glGetProgramInfoLog
 
 from .texture import Texture
 
@@ -35,43 +35,10 @@ class Shader:
         success = glGetProgramiv(self.handle, GL_LINK_STATUS)
 
         if not success:
-            info_log = glGetShaderInfoLog(self.handle)
+            info_log = glGetProgramInfoLog(self.handle)
 
             raise ShaderCompilationException(
                 f"Shader link failed for shaders '{shaders}': " + info_log.decode())
-
-
-
-        # self.vs_handle = _compile(vs_path, GL_VERTEX_SHADER);
-        #     self.fs_handle = _compile(fs_path, GL_FRAGMENT_SHADER);
-        #     self.handle = glCreateProgram();
-        #
-        #     // Link shader program
-        #     glAttachShader(self.handle, self.vs_handle);
-        #     glAttachShader(self.handle, self.fs_handle);
-        #
-        #     // Bind vertex attributes
-        #     for (size_t i = 0; i < n; i++) {
-        #         glBindAttribLocation(self.handle, attributes[i].index, attributes[i].name);
-        #     }
-        #
-        #     glLinkProgram(self.handle);
-        #
-        #     // Check link status
-        #     GLint linked;
-        #     glGetProgramiv(self.handle, GL_LINK_STATUS, &linked);
-        #
-        #     if (linked == 0) {
-        #         char buf[512];
-        #         snprintf(buf, 512, "[%s, %s]", vs_path, fs_path);
-        #         _log_and_fail(self.handle, "linking", buf, glGetProgramInfoLog, glGetProgramiv);
-        #     }
-
-    # void shader_uniform_texture2D(struct Shader self, char *name, struct Texture texture, GLuint n) {
-    #     glActiveTexture(GL_TEXTURE0 + n);
-    #     texture_bind(texture);
-    #     glUniform1i(glGetUniformLocation(self.handle, (const GLchar *) name), n);
-    # }
 
     def use(self):
         glUseProgram(self.handle)
