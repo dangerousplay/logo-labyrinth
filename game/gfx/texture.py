@@ -6,8 +6,11 @@ from OpenGL.GL import *
 class Texture:
     handle: int
 
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, flip=False):
         with Image.open(file_path) as image:
+            if flip:
+                image = image.rotate(180)
+
             pixels = image.tobytes()
 
             self.handle = glGenTextures(1)

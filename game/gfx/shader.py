@@ -1,10 +1,12 @@
 import io
 from typing import Optional
 
+import glm
 from OpenGL.GL import glCreateShader, glCompileShader, glShaderSource, GL_COMPILE_STATUS, glGetShaderiv, \
     glGetShaderInfoLog, glCreateProgram, glAttachShader, glLinkProgram, glBindAttribLocation, GL_LINK_STATUS, \
     glGetProgramiv, glActiveTexture, glBindTexture, GL_TEXTURE_2D, glGetUniformLocation, glUniform1i, glUniform4f, \
-    GL_TEXTURE0, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER, glUseProgram, glGetProgramInfoLog
+    GL_TEXTURE0, GL_FRAGMENT_SHADER, GL_VERTEX_SHADER, glUseProgram, glGetProgramInfoLog, glUniformMatrix4fv, glUniform3f, \
+    GL_FALSE
 
 from .texture import Texture
 
@@ -14,7 +16,9 @@ class ShaderCompilationException(Exception):
 
 
 class Shader:
-    def __init__(self, vertex_shader_path: str, fragment_shader_path: str, shader_attributes: Optional[dict[int, str]] = None):
+    def __init__(self, vertex_shader_path: str, fragment_shader_path: str,
+                 shader_attributes: Optional[dict[int, str]] = None):
+
         if shader_attributes is None:
             shader_attributes = {}
 
@@ -38,7 +42,8 @@ class Shader:
             info_log = glGetProgramInfoLog(self.handle)
 
             raise ShaderCompilationException(
-                f"Shader link failed for shaders '{shaders}': " + info_log.decode())
+                f"Shader link failed for shaders '{shaders}': " + info_log
+            )
 
     def use(self):
         glUseProgram(self.handle)
@@ -51,6 +56,11 @@ class Shader:
     def set_uniform_vec4(self, name: str, x, y, z, w):
         glUniform4f(glGetUniformLocation(self.handle, name), x, y, z, w)
 
+    def set_uniform_vec3(self, name: str, x, y, z):
+        glUniform3f(glGetUniformLocation(self.handle, name), x, y, z)
+
+    def set_uniform_mat4(self, name: str, value: glm.mat4):
+        glUniformMatrix4fv(glGetUniformLocation(self.handle, name), 1, GL_FALSE, glm.value_ptr(value))
 
     @staticmethod
     def compile_shader(file_path, shader_type):
