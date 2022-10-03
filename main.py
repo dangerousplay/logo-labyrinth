@@ -1,8 +1,13 @@
+import os
+from concurrent.futures import ProcessPoolExecutor
+from itertools import cycle
 from typing import Optional
 
 import esper
 import glfw
 import glm
+import pygame
+from pygame.mixer import music
 from OpenGL.GL import *
 from glfw.GLFW import *
 
@@ -113,6 +118,27 @@ def framebuffer_size_callback(window: glfw._GLFWwindow, width: int, height: int)
     glViewport(0, 0, width, height)
 
 
+def play_soundtrack(sounds_path: str):
+    pygame.mixer.init()
+    pygame.init()
+
+    songs = map(lambda f: os.path.join(sounds_path, f), os.listdir(sounds_path))
+    songs = filter(os.path.isfile, songs)
+    songs = list(songs)
+    songs_cycle = cycle(songs)
+
+    music.load(next(songs_cycle))
+    music.queue(next(songs_cycle))
+    music.set_endevent(pygame.USEREVENT)
+    music.set_volume(0.2)
+    music.play()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.USEREVENT:  # A track has ended
+                pygame.mixer.music.queue(next(songs_cycle))  # Queue the next one in the list
+
+
 def main():
     glfw.init()
     window = glfw.create_window(1280, 1280, "Logo Maze game", None, None)
@@ -122,7 +148,9 @@ def main():
         glfw.terminate()
         return -1
 
-    play_soundtrack()
+    executor = ProcessPoolExecutor()
+    executor.submit(play_soundtrack, 'game/songs')
+    executor.shutdown(wait=False)
 
     glfw.make_context_current(window)
     glfw.set_framebuffer_size_callback(window, framebuffer_size_callback)
