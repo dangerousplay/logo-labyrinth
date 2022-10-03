@@ -1,5 +1,4 @@
-import io
-from PIL import Image
+from PIL import Image, ImageOps
 from OpenGL.GL import *
 
 
@@ -10,6 +9,7 @@ class Texture:
         with Image.open(file_path) as image:
             if flip:
                 image = image.rotate(180)
+                image = ImageOps.mirror(image)
 
             pixels = image.tobytes()
 

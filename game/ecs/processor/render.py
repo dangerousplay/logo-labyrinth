@@ -32,7 +32,7 @@ class RenderProcessor(esper.Processor):
             scale = DEFAULT_SCALE
 
             if self.world.has_component(ent, Scale):
-                scale = ent.get_component(ent, Scale)
+                scale = self.world.component_for_entity(ent, Scale)
 
             texture = render.texture
 
@@ -43,7 +43,7 @@ class RenderProcessor(esper.Processor):
             translation = glm.translate(glm.vec3(pos.x, pos.y, pos.z))
 
             texture_shader.set_uniform_texture_2d("tex", texture, 0)
-            texture_shader.set_uniform_mat4("transformations", projection * translation * scale)
+            texture_shader.set_uniform_mat4("transformations",  projection * translation * scale)
 
             texture.use()
             texture_shader.use()
@@ -56,10 +56,6 @@ class RenderProcessor(esper.Processor):
 class AnimationProcessor(esper.Processor):
 
     def process(self, delta_time):
-        texture_shader = _texture_shader_()
-
-        texture_shader.use()
-
         for ent, (render, animation, velocity) in self.world.get_components(Renderable, WalkAnimation, Velocity):
             if not velocity.is_moving():
                 continue

@@ -7,7 +7,8 @@ from mazelib.generate.Prims import Prims
 import matplotlib.pyplot as plt
 from mazelib.solve.ShortestPath import ShortestPath
 
-from game.ecs.entity import wall, path, player
+from game.ecs.entity import wall, path, player, goal
+from game.ecs.processor.end import EndProcessor
 from game.ecs.processor.motion import MovementProcessor, CollisionProcessor
 from game.ecs.processor.render import RenderProcessor, AnimationProcessor
 
@@ -20,7 +21,7 @@ def generate_world(x: int, y: int):
 
     show_png(m.grid)
 
-    world = create_world(x, y)
+    world, world_size = create_world(x, y)
 
     generate_walls(world, m.grid)
 
@@ -32,9 +33,9 @@ def generate_world(x: int, y: int):
         end = solution[-1]
 
         player_entity = player.create_player(world, start[0], start[1])
-        path.create_path(world, end[0], end[1])
+        goal.create_goal(world, end[0], end[1])
 
-    return world, player_entity
+    return (world, world_size), player_entity
 
 
 def create_world(x: int, y: int):
@@ -45,9 +46,10 @@ def create_world(x: int, y: int):
     world.add_processor(CollisionProcessor())
     world.add_processor(MovementProcessor(), 1)
     world.add_processor(AnimationProcessor(), 2)
-    world.add_processor(RenderProcessor(world_size=world_size), 3)
+    world.add_processor(EndProcessor(), 3)
+    world.add_processor(RenderProcessor(world_size=world_size), 4)
 
-    return world
+    return world, world_size
 
 
 def _wall_positions_(grid: np.ndarray):

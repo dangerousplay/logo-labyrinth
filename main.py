@@ -1,15 +1,34 @@
 from typing import Optional
 
+import esper
 import glfw
+import glm
 from OpenGL.GL import *
 from glfw.GLFW import *
 
 from game.ecs.component.motion import Velocity
 from game.world.generator import generate_world
 
+projection = None
+regenerate_world = False
 
-# from gfx import Shader
-# from gfx import Texture
+
+def mouse_button_callback(window, button, action, mods):
+    if action == GLFW_PRESS:
+        x, y = glfw.get_cursor_pos(window)
+
+        global projection
+
+        viewport = glGetIntegerv(GL_VIEWPORT)
+
+        viewport = glm.vec4(viewport)
+
+        clip_coordinates = glm.unProject(glm.vec3(x, y, 0.0), glm.identity(glm.mat4), projection, viewport)
+
+        esper.dispatch_event("mouse_click", clip_coordinates[0], clip_coordinates[1], button)
+
+        pass
+
 
 
 # process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
@@ -37,14 +56,30 @@ def process_keyboard_input(window) -> Optional[Velocity]:
 
 
 def render_loop(window):
-    world, player = generate_world(10, 10)
+    world_x = world_y = 10
+
+    (world, world_size), player = generate_world(world_x, world_y)
+
+    global projection
+    projection = world_size
 
     glEnable(GL_BLEND)
     glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
 
     last_frame_time = glfw.get_time()
 
+    def regenerate_world_handler(_):
+        global regenerate_world
+        regenerate_world = True
+
+    esper.set_handler("regenerate_world", regenerate_world_handler)
+
     while not glfw.window_should_close(window):
+        global regenerate_world
+        if regenerate_world:
+            regenerate_world = False
+            (world, world_size), player = generate_world(world_x, world_y)
+
         # input
         # -----
         player_velocity = process_keyboard_input(window)
@@ -80,15 +115,18 @@ def framebuffer_size_callback(window: glfw._GLFWwindow, width: int, height: int)
 
 def main():
     glfw.init()
-    window = glfw.create_window(800, 600, "Logo Maze game", None, None)
+    window = glfw.create_window(1280, 1280, "Logo Maze game", None, None)
 
     if window is None:
         print("Failed to create GLFW window")
         glfw.terminate()
         return -1
 
+    play_soundtrack()
+
     glfw.make_context_current(window)
     glfw.set_framebuffer_size_callback(window, framebuffer_size_callback)
+    glfw.set_mouse_button_callback(window, mouse_button_callback)
 
     render_loop(window)
 

@@ -4,6 +4,7 @@ import esper
 import glm
 
 from ..component.motion import Position, Velocity, Direction
+from ..component.player import Player
 from ..component.render import Renderable, WalkAnimation
 from ...gfx import Texture
 
@@ -45,13 +46,15 @@ def _walk_animation_():
     return WalkAnimation(animations={
         Direction.DOWN: "game/textures/yoshi/walk_down",
         Direction.UP: "game/textures/yoshi/walk_up",
-        Direction.RIGHT: "game/textures/yoshi/walk_right",
         Direction.LEFT: "game/textures/yoshi/walk_left",
+        Direction.RIGHT: "game/textures/yoshi/walk_right",
     })
+
 
 def create_player(world: esper.World, x: float, y: float):
     return world.create_entity(
         _create_renderable_(),
         Position(x, y, 0), Velocity(0.0, 0.0, 0.0),
-        _walk_animation_()
+        _walk_animation_(),
+        Player()
     )
