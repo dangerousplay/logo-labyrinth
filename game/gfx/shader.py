@@ -78,6 +78,7 @@ class Shader:
                 info_log = glGetShaderInfoLog(handle)
 
                 raise ShaderCompilationException(
-                    f"Shader compilation failed for file '{file_path}': " + info_log.decode())
+                    f"Shader compilation failed for file '{file_path}': " + info_log
+                )
 
             return handle
