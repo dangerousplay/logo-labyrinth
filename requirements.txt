@@ -6,3 +6,4 @@ matplotlib==3.5.0
 pillow==9.2.0
 mazelib==0.9.13
 PyGLM==2.5.7
+pygame==2.1.2
