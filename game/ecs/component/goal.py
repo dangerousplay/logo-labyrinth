@@ -1,10 +1,9 @@
 from dataclasses import dataclass as component
-from game.ecs.component.motion import Position
+
+import pyrr
 
 
 @component
 class Goal:
-    position: Position
+    position: pyrr.Vector3
 
-    def __init__(self, position: Position):
-        self.position = position

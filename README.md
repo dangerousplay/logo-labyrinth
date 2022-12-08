@@ -4,7 +4,7 @@
 * [Logo maze](#logo-maze)
   * [Soundtrack](#soundtrack)
   * [Entity Component System](#entity-component-system)
-  * [Texture handling](#texture-handling)
+  * [Texture loading](#texture-loading)
     * [Texture Shader](#texture-shader)
   * [Shaders](#shaders)
   * [Text generation](#text-generation)
@@ -55,9 +55,13 @@ Advantages of using ECS:
 
 Source: https://www.guru99.com/entity-component-system.html
 
+![](https://miro.medium.com/max/828/1*yoLxDyQoFzC0je_oHkcppw.png)
+
+Source: https://medium.com/@clevyr/entity-component-system-for-react-js-e3ab6e9be776
+
 The ECS components implemented are in the [game/ecs](./game/ecs) folder.
 
-## Texture handling
+## Texture loading
 
 The created [Texture](./game/gfx/texture.py) class abstracts texture loading from OpenGL.
 It supports image flipping after loading, for the use cases where the image is not in the correct position.
@@ -90,8 +94,8 @@ The current implementation load the textures with GL_REPEAT mode.
 ### Texture Shader
 
 In order to render a given texture, two simple shaders was used. 
-A [vertex shader](./game/shaders/texture_vs.glsl) to position the objects in the world with a UV mapping.
-A [fragment Shader](./game/shaders/texture_vs.glsl) to map the texture to the object using UV mapping.
+A [vertex shader](resources/shaders/texture_vs.glsl) to position the objects in the world with a UV mapping.
+A [fragment Shader](resources/shaders/texture_vs.glsl) to map the texture to the object using UV mapping.
 
 ```glsl
 #version 330
@@ -146,6 +150,8 @@ def compile_shader(file_path, shader_type):
 
         return handle
 ```
+
+## Rendering
 
 ## Text generation
 

@@ -1,60 +1,27 @@
-from functools import cache
+from dataclasses import dataclass as component
 
 import esper
-import glm
+import numpy as np
+import pyrr
+from moderngl_window.scene import Camera
+from pyphysx import *
 
-from ..component.motion import Position, Velocity, Direction
-from ..component.player import Player
-from ..component.render import Renderable, WalkAnimation
-from ...gfx import Texture
-
-
-@cache
-def _player_texture_():
-    return Texture("game/textures/yoshi/walk_down/1.png", flip=True)
+from game.ecs.component.physics import vector_swap_yz
+from game.ecs.component.player import Player
 
 
-@cache
-def _create_renderable_():
-    return Renderable(
-        _player_texture_(),
-        vertices=glm.array(
-            glm.float32,
-            # positions
-            0.5, 0.5, 0.0,  # top right
-            0.5, -0.5, 0.0,  # bottom right
-            -0.5, -0.5, 0.0,  # bottom left
-            -0.5, 0.5, 0.0,  # top left
-        ),
-        indices=glm.array(
-            glm.uint32,
-            0, 1, 3,  # first triangle
-            1, 2, 3  # second triangle
-        ),
-        uv_mapping=glm.array(
-            glm.float32,
-            1, 1,
-            1, 0.0,
-            0.0, 0.0,
-            0.0, 1
-        )
-    )
+def create(world: esper.World, physx_scene: Scene, position: pyrr.Vector3, camera: Camera):
+    actor = RigidDynamic()
+    actor.set_global_pose(vector_swap_yz(position))
+    actor.attach_shape(Shape.create_box([1.0, 1.0, 1.0], Material(static_friction=10., restitution=1.)))
+    actor.set_mass(1000)
 
+    physx_scene.add_actor(actor)
 
-@cache
-def _walk_animation_():
-    return WalkAnimation(animations={
-        Direction.DOWN: "game/textures/yoshi/walk_down",
-        Direction.UP: "game/textures/yoshi/walk_up",
-        Direction.LEFT: "game/textures/yoshi/walk_left",
-        Direction.RIGHT: "game/textures/yoshi/walk_right",
-    })
-
-
-def create_player(world: esper.World, x: float, y: float):
-    return world.create_entity(
-        _create_renderable_(),
-        Position(x, y, 0), Velocity(0.0, 0.0, 0.0),
-        _walk_animation_(),
+    entity = world.create_entity(
+        actor,
         Player()
     )
+
+    world.add_component(entity, camera, Camera)
+    world.add_component(entity, actor, RigidActor)

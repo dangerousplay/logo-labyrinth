@@ -1,2 +1,2 @@
 
-__all__ = ["gfx", "ecs", "game", "world"]
+__all__ = ["gfx", "ecs", "world"]

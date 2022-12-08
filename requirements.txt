@@ -7,3 +7,7 @@ pillow==9.2.0
 mazelib==0.9.13
 PyGLM==2.5.7
 pygame==2.1.2
+git+https://github.com/petrikvladimir/pyphysx.git@master
+pywavefront
+moderngl-window
+moderngl

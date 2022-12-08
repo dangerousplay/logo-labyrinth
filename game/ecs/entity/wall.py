@@ -1,46 +1,30 @@
 from functools import cache
 
 import esper
-import glm
+import pyrr
+from pyphysx import *
 
-from ..component.motion import Position
-from ..component.render import Renderable
-from ...gfx import Texture
+from game.ecs.component.physics import Scale, vector_swap_yz
+from game.ecs.component.scene import Mesh
 
-
-@cache
-def _wall_texture_():
-    return Texture("game/textures/block/smooth_stone.png")
+WALL_MESH = "resources/models/treasure_chest/treasure_chest_4k.gltf"
 
 
 @cache
-def _create_renderable_():
-    return Renderable(
-        _wall_texture_(),
-        vertices=glm.array(
-            glm.float32,
-            # positions
-            0.5, 0.5, 0.0,  # top right
-            0.5, -0.5, 0.0,  # bottom right
-            -0.5, -0.5, 0.0,  # bottom left
-            -0.5, 0.5, 0.0,  # top left
-        ),
-        indices=glm.array(
-            glm.uint32,
-            0, 1, 3,  # first triangle
-            1, 2, 3  # second triangle
-        ),
-        uv_mapping=glm.array(
-            glm.float32,
-            0.2, 0.2,
-            0.2, 0.0,
-            0.0, 0.0,
-            0.0, 0.2
-        )
-    )
+def _wall_mesh():
+    return Mesh(WALL_MESH)
 
 
-def create_wall(world: esper.World, x: float, y: float):
-    return world.create_entity(_create_renderable_(), Position(x, y, 0))
+def create(world: esper.World, physx_scene: Scene, position: pyrr.Vector3, space: float):
+    actor = RigidStatic()
+    actor.set_global_pose(vector_swap_yz(position))
+    actor.attach_shape(Shape.create_box([1.0 * space - 0.1, 1.0 * space - 0.1, 30.0], Material(dynamic_friction=1., restitution=1.)))
+
+    mesh = _wall_mesh()
+
+    physx_scene.add_actor(actor)
+
+    entity = world.create_entity(mesh, Scale([2, 2, 3]))
+    world.add_component(entity, actor, RigidActor)
 
 

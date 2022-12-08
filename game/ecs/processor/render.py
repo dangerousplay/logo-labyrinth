@@ -1,71 +1,161 @@
-from functools import cache
+from os.path import abspath
 
 import esper
-import glm
-from OpenGL.GL import GL_TRIANGLES, glDrawElements, GL_UNSIGNED_INT
+import numpy
+from moderngl import Program, Context
+from moderngl_window import resources
+from moderngl_window.meta import TextureDescription, ProgramDescription
+from moderngl_window.scene import MeshProgram, Camera
+from pyphysx import RigidActor
 
-from game.ecs.component.motion import Position, Scale, Velocity
-from game.ecs.component.render import Renderable, WalkAnimation
-from game.gfx import Shader
+from game.ecs.component.physics import Scale, swap_yz
+from game.ecs.component.scene import Renderable, Mesh, Light
+
+from pyrr import Matrix44, Vector4
+
+DEFAULT_SCALE = Matrix44.from_scale([1.0, 1.0, 1.0])
+
+REFLECTION_BUFFER_SIZE = (320, 180)
+REFRACTION_BUFFER_SIZE = (1280, 720)
 
 
-DEFAULT_SCALE = Scale(1.0, 1.0, 1.0)
+def load_texture(path: str):
+    return resources.textures.load(
+            TextureDescription(
+                path=abspath(path),
+            )
+        )
 
 
-@cache
-def _texture_shader_():
-    return Shader('game/shaders/texture_vs.glsl', 'game/shaders/texture_fs.glsl')
+def load_program(vertex_shader: str, fragment_shader: str):
+    return resources.programs.load(
+        ProgramDescription(vertex_shader=abspath(vertex_shader), fragment_shader=abspath(fragment_shader))
+    )
+
+
+def default_plane():
+    return Vector4([0, 1, 0, 1])
+
+
+class TextureProgram(MeshProgram):
+    def __init__(self, program: Program):
+        super().__init__(program)
+
+    def draw(
+        self,
+        mesh,
+        projection_matrix: numpy.ndarray = None,
+        model_matrix: numpy.ndarray = None,
+        camera_matrix: numpy.ndarray = None,
+        time=0.0,
+    ):
+        mesh.material.mat_texture.texture.use()
+
+        self.program["projectionMatrix"].write(projection_matrix)
+        self.program["viewMatrix"].write(camera_matrix)
+        self.program["transformationMatrix"].write(model_matrix)
+        mesh.vao.render(self.program)
+
+    def apply(self, mesh):
+        if not mesh.material:
+            return None
+
+        if not mesh.attributes.get("NORMAL"):
+            return None
+
+        if not mesh.attributes.get("TEXCOORD_0"):
+            return None
+
+        if mesh.attributes.get("COLOR_0"):
+            return None
+
+        if mesh.material.mat_texture is not None:
+            return self
+
+        return None
 
 
 class RenderProcessor(esper.Processor):
 
-    def __init__(self, world_size: glm.fmat4x4 = glm.ortho(-10, 30, -10, 30)):
-        self.world_size = world_size
+    def __init__(self, world, pipeline=None, water_render=None):
+        if pipeline is None:
+            pipeline = []
 
-    def process(self, delta_time):
-        texture_shader = _texture_shader_()
+        self.pipeline = pipeline
+        self.water_render = water_render
+        self.world = world
 
-        texture_shader.use()
+        shader = load_program('resources/shaders/texture_vs.glsl', 'resources/shaders/texture_fs.glsl')
+        self.mesh_shader = TextureProgram(program=shader)
 
-        for ent, (render, pos) in self.world.get_components(Renderable, Position):
-            render: Renderable = render
+        self.reflection_fbo = None
+        self.refraction_fbo = None
+
+    def process(self, time, camera: Camera, gl_context: Context, **kwargs):
+        # self.reflection_fbo.clear()
+        # self.reflection_fbo.use()
+        #
+        # camera_distance = 2 * camera.position[1]
+        #
+        # camera.pitch *= -1
+        # camera.position[1] -= camera_distance
+
+        self.render_scene(mesh_shader=self.mesh_shader, camera=camera, gl_context=gl_context)
+
+        # camera.pitch *= -1
+        # camera.position[1] += camera_distance
+        #
+        # current_fbo.use()
+        # gl_context.fbo = current_fbo
+        #
+        # self.render_scene(mesh_shader=self.mesh_shader, camera=camera, gl_context=gl_context)
+
+    def render_scene(self, camera: Camera, mesh_shader: MeshProgram, gl_context: Context, plane=default_plane()):
+
+        for ent, (renderable, actor) in self.world.get_components(Mesh, RigidActor):
+            renderable: Renderable = renderable
             scale = DEFAULT_SCALE
 
             if self.world.has_component(ent, Scale):
-                scale = self.world.component_for_entity(ent, Scale)
+                scale = self.world.component_for_entity(ent, Scale).value
 
-            texture = render.texture
+            actor: RigidActor
+            position = Matrix44.from_translation(swap_yz(actor.get_global_pose()[0]), dtype='f4')
+            shader = mesh_shader.program
 
-            projection = self.world_size
+            light_positions = []
+            light_colour = []
+            attenuation = []
 
-            scale = glm.scale(glm.vec3(scale.x, scale.y, scale.z))
+            for _, [light] in self.world.get_components(Light):
+                light_positions.append(light.position)
+                light_colour.append(light.color)
+                attenuation.append(light.attenuation)
 
-            translation = glm.translate(glm.vec3(pos.x, pos.y, pos.z))
+            shader["lightPosition"] = light_positions
+            shader["lightColour"] = light_colour
+            shader["attenuation"] = attenuation
+            # shader["plane"] = plane
 
-            texture_shader.set_uniform_texture_2d("tex", texture, 0)
-            texture_shader.set_uniform_mat4("transformations",  projection * translation * scale)
-
-            texture.use()
-            texture_shader.use()
-
-            render.use()
-
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, None)
+            renderable.draw(
+                projection_matrix=camera.projection.matrix,
+                camera_matrix=camera.matrix * position * scale,
+                program=mesh_shader,
+            )
 
 
-class AnimationProcessor(esper.Processor):
+class WaterRender:
+    def __init__(self, dudv_texture: str, normal_map: str, shader: Program):
 
-    def process(self, delta_time):
-        for ent, (render, animation, velocity) in self.world.get_components(Renderable, WalkAnimation, Velocity):
-            if not velocity.is_moving():
-                continue
+        self.dudv = load_texture(dudv_texture)
+        self.normal_map = load_texture(normal_map)
+        self.shader = shader
 
-            render: Renderable = render
+        self.shader["dudvMap"] = self.dudv
+        self.shader["normalMap"] = self.normal_map
+        self.reflection_texture = None
+        self.refraction_texture = None
 
-            direction = velocity.directions()[0]
+    def render(self, camera: Camera):
+        pass
 
-            animation: WalkAnimation = animation
-            animations = animation.animations.get(direction)
-
-            if animations is not None:
-                render.texture = next(animations)
