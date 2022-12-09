@@ -11,3 +11,4 @@ git+https://github.com/petrikvladimir/pyphysx.git@master
 pywavefront
 moderngl-window
 moderngl
+imgui
